@@ -1,0 +1,10 @@
+2026-04-29 14:39:21,534 | INFO | auth-service | Login attempt for email: admin@gmail.com
+2026-04-29 14:39:21,535 | INFO | auth-service | Login success for admin@gmail.com
+2026-04-29 17:39:19,392 | INFO | auth-service | Login attempt for email: admin@gmail.com
+2026-04-29 17:39:19,414 | INFO | auth-service | Login success for admin@gmail.com
+2026-04-29 17:49:06,548 | INFO | auth-service | Login attempt for email: admin@gmail.com
+2026-04-29 17:49:06,549 | INFO | auth-service | Login success for admin@gmail.com
+2026-04-29 17:49:26,676 | INFO | auth-service | Login attempt for email: admin@gmail.com
+2026-04-29 17:49:26,678 | INFO | auth-service | Login success for admin@gmail.com
+2026-04-29 17:56:17,536 | INFO | auth-service | Login attempt for email: admin@gmail.com
+2026-04-29 17:56:17,539 | INFO | auth-service | Login success for admin@gmail.com
