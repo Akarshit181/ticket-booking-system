@@ -1,0 +1,37 @@
+from pydantic import BaseModel
+from datetime import datetime
+
+
+class TokenPayload(BaseModel):
+    sub: str
+    email: str
+    role: str
+    type: str
+    exp: int
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class RefreshTokenDocument(BaseModel):
+    user_id: str
+    token: str
+    created_at: datetime
+    expires_at: datetime
+    is_revoked: bool = False
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str

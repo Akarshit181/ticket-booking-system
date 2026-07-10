@@ -22,8 +22,11 @@
 
 from app.database.mongodb import MongoDB
 from app.utils.config import settings
+from bson import ObjectId
+from datetime import datetime, UTC
 
-class UserRepository: 
+
+class UserRepository:
     def __init__(self):
         self.db = MongoDB.get_db()
         self.users = self.db[settings.collection_users]
@@ -36,3 +39,12 @@ class UserRepository:
 
     def create(self, user_document: dict):
         self.users.insert_one(user_document)
+
+    def get_by_id(self, user_id: str):
+        return self.users.find_one({"_id": ObjectId(user_id)})
+
+    def update_password(self, user_id: str, password_hash: str):
+        return self.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"password_hash": password_hash, "updated_at": datetime.now(UTC)}},
+        )

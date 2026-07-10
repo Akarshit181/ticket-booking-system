@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.login import router as login_router
 from app.database.mongodb import MongoDB
+from app.database.redis import RedisDB
 from app.routes.health import router as health_router
 from app.routes.auth import router as auth_router
 
@@ -29,8 +30,7 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     MongoDB.connect()
-
-    print("MongoDB Connected")
+    RedisDB.connect()
 
 #This tells take all endpoints insider health_router and register them.
 app.include_router(health_router)

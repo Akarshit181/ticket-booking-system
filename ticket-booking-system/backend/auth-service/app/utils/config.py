@@ -13,6 +13,24 @@ class Settings:
     jwt_algorithm = os.getenv("JWT_ALGORITHM")
     jwt_access_token_expire_minutes = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES"))
     jwt_refresh_token_expire_days = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS"))
+    collection_refresh_tokens = os.getenv("COLLECTION_REFERSH_TOKEN")
+    collection_password_reset_tokens = os.getenv("COLLECTION_PASSWORD_RESET_TOKENS")
+    password_reset_token_expire_minutes = int(
+        os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES")
+    )
+    collection_email_verification_tokens = os.getenv(
+        "COLLECTION_EMAIL_VERIFICATION_TOKENS"
+    )
+    email_verification_token_expire_minutes = int(
+        os.getenv("EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES")
+    )
+
+    redis_host = os.getenv("REDIS_HOST")
+    redis_port = int(os.getenv("REDIS_PORT", 6379))
+    redis_db = int(os.getenv("REDIS_DB", 0))
+    redis_password = os.getenv("REDIS_PASSWORD")
+    rate_limit_login = int(os.getenv("RATE_LIMIT_LOGIN", 5))
+    rate_limit_window_seconds = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", 60))
 
 
 settings = Settings()

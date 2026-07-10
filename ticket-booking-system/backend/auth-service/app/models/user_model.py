@@ -16,3 +16,7 @@ class UserResponse(BaseModel):
     id : str
     username : str
     email : EmailStr
+
+class ChangePasswordRequest(BaseModel):
+    old_password : str
+    new_password : str =  Field(..., min_length=8)

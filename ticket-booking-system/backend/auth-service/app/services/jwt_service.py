@@ -12,10 +12,16 @@
 # Payload
 # Secret Key
 # When user send any data it again creates the signature using the same Header, Payload, and Secret Key. If the signature matches the one in the JWT, it means the data has not been tampered with.
-
+from fastapi import HTTPException
 from datetime import datetime, timedelta, UTC
 from jose import jwt, JWTError
 from app.utils.config import settings
+from app.models.token_model import (
+    TokenPayload,
+    RefreshTokenRequest,
+    AccessTokenResponse,
+)
+from pydantic import ValidationError
 
 
 def create_access_token(data: dict):
@@ -32,7 +38,7 @@ def create_access_token(data: dict):
     )
 
 
-def refresh_access_token(data: dict):
+def create_refresh_token(data: dict):
     payload = data.copy()
     expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
     payload.update({"exp": expire, "type": "refresh"})
@@ -40,21 +46,43 @@ def refresh_access_token(data: dict):
         payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
     )
 
+
 def decode_token(token: str):
     try:
         payload = jwt.decode(
-            token,
-            settings.jwt_secret_key,
-            algorithms=[settings.jwt_algorithm]
+            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
         )
 
         return payload
     except JWTError:
         return None
 
-def verify_token(token: str):
-    payload = decode_token(token)
 
+def verify_token(token: str, token_type: str = "access"):
+    payload = decode_token(token)
     if payload is None:
         return None
-    return payload
+    try:
+        # Suppose JWT contain this
+        #         {
+        #     "sub":"123",
+        #     "email":"john@gmail.com",
+        #     "role":"USER",
+        #     "type":"access"
+        # }
+        #         #Pydantic convert it like below
+        #         TokenPayload(
+        #     sub="123",
+        #     email="john@gmail.com",
+        #     role="USER",
+        #     type="access"
+        # )
+        # Show access will become easy like payload.email else payload['email']
+        # And another benefit is that if something is missing we got validation error.
+        token_payload = TokenPayload(**payload)
+    except ValidationError:
+        return None
+    return token_payload
+
+
+
