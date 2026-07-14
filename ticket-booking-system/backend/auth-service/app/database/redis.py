@@ -21,7 +21,7 @@ class RedisDB:
             print("Redis Connected")
 
     @classmethod
-    def get_clien(cls):
+    def get_client(cls):
         if cls._client is None:
             raise Exception("Redis is not connected.")
         return cls._client

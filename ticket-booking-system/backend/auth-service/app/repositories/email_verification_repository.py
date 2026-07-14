@@ -31,16 +31,33 @@ class EmailVerificationRepository:
             {"$set": {"email_verified": True, "updated_at": datetime.now(UTC)}},
         )
 
+    def revoke_all_by_user_id(self, user_id: str):
+        return self.collection.update_many(
+            {
+                "user_id": user_id,
+                "used": False,
+            },
+            {
+                "$set": {
+                    "used": True,
+                    "used_at": datetime.now(UTC),
+                }
+            },
+        )
 
-def revoke_all_by_user_id(self, user_id: str):
-    return self.collection.update_many(
-        {
-            "user_id": user_id,
-            "used": False,
-        },
-        {
-            "$set": {
-                "used": True,
-            }
-        },
-    )
+    def consume_token(self, token_hash: str):
+        return self.collection.find_one_and_update(
+            {
+                "token": token_hash,
+                "used": False,
+                "expires_at": {"$gt": datetime.now(UTC)},
+            },
+            {
+                "$set": {
+                    "used": True,
+                    "used_at": datetime.now(UTC),
+                }
+            },
+        )
+
+   

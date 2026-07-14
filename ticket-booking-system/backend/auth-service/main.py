@@ -1,4 +1,4 @@
-#Imports the main application Class
+# Imports the main application Class
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.login import router as login_router
@@ -6,18 +6,23 @@ from app.database.mongodb import MongoDB
 from app.database.redis import RedisDB
 from app.routes.health import router as health_router
 from app.routes.auth import router as auth_router
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.exceptions.handlers import global_exception_handler
+from app.middleware.request_id import RequestIDMiddleware
 
-app = FastAPI(
-    title = "Auth-Service",
-    version="1.0.0"
+app = FastAPI(title="Auth-Service", version="1.0.0")
+# Global exception handler
+app.add_exception_handler(
+    Exception,
+    global_exception_handler,
 )
 
 
 
-# Suppose your frontend runs on http://localhost:3000 and your api runs on http://localhost:8000. 
+# Suppose your frontend runs on http://localhost:3000 and your api runs on http://localhost:8000.
 # The browser considers these different origins and blocks request unless your api allows them.
 # allow_origins=["*"] this means allow request from any origin it is good for local but for prodcution restrict it.
- 
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,14 +30,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestIDMiddleware)
 
-#This tells the function will run only on startup not everytime
+# This tells the function will run only on startup not everytime
 @app.on_event("startup")
 def startup():
     MongoDB.connect()
     RedisDB.connect()
 
-#This tells take all endpoints insider health_router and register them.
+
+# This tells take all endpoints insider health_router and register them.
 app.include_router(health_router)
 app.include_router(auth_router)
 

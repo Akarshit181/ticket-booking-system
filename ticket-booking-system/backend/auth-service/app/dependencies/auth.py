@@ -17,6 +17,11 @@ from app.dependencies.repository import (
     get_password_reset_repository,
     get_email_verification_repository,
 )
+from app.services.login_attempt_service import LoginAttemptService
+
+
+def get_login_attempt_service():
+    return LoginAttemptService()
 
 
 def get_auth_service(
@@ -29,9 +34,11 @@ def get_auth_service(
     email_verification_repository: EmailVerificationRepository = Depends(
         get_email_verification_repository
     ),
+    login_attempt_service: LoginAttemptService = Depends(get_login_attempt_service),
 ):
     return AuthService(
         refresh_token_repository=refresh_token_repository,
         password_reset_repository=password_reset_repository,
         email_verification_repository=email_verification_repository,
+        login_attempt_service=login_attempt_service,
     )

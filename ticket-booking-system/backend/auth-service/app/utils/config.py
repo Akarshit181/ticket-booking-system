@@ -30,7 +30,13 @@ class Settings:
     redis_db = int(os.getenv("REDIS_DB", 0))
     redis_password = os.getenv("REDIS_PASSWORD")
     rate_limit_login = int(os.getenv("RATE_LIMIT_LOGIN", 5))
+    rate_limit_register = int(os.getenv("RATE_LIMIT_REGISTER", 3))
+    rate_limit_forgot_password = int(os.getenv("RATE_LIMIT_FORGOT_PASSWORD", 3))
+    rate_limit_resend_verification = int(os.getenv("RATE_LIMIT_RESEND_VERIFICATION", 3))
+    rate_limit_refresh = int(os.getenv("RATE_LIMIT_REFRESH", 20))
     rate_limit_window_seconds = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", 60))
+    login_max_attempts = int(os.getenv("LOGIN_MAX_ATTEMPTS", 5))
+    login_attempt_window_seconds = int(os.getenv("LOGIN_ATTEMPT_WINDOW_SECONDS", 300))
 
 
 settings = Settings()

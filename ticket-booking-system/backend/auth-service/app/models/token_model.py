@@ -31,6 +31,8 @@ class RefreshTokenDocument(BaseModel):
     created_at: datetime
     expires_at: datetime
     is_revoked: bool = False
+    revoked_at: datetime | None = None
+    replaced_by_token: str | None = None
 
 
 class LogoutRequest(BaseModel):

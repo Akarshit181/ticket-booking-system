@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, HTTPException
 from app.dependencies.auth import get_auth_service
 from app.dependencies.rbac import require_roles
 from app.services.auth_service import AuthService
@@ -6,6 +6,7 @@ from app.models.user_model import UserRegister, UserLogin, ChangePasswordRequest
 from app.dependencies.security import get_current_user
 from app.models.token_model import TokenPayload
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import ValidationError
 from app.models.token_model import (
     RefreshTokenRequest,
     AccessTokenResponse,
@@ -45,7 +46,17 @@ async def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    user = UserLogin(email=form_data.username, password=form_data.password)
+    try:
+        user = UserLogin(
+            email=form_data.username,
+            password=form_data.password,
+        )
+    except ValidationError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+        )
+
     return auth_service.login_user(user)
 
 
