@@ -39,6 +39,7 @@ from app.models.email_verification_model import (
 )
 from app.repositories.email_verification_repository import EmailVerificationRepository
 from app.services.login_attempt_service import LoginAttemptService
+from pymongo.errors import DuplicateKeyError
 
 
 class AuthService:
@@ -76,10 +77,18 @@ class AuthService:
         # Do the above to avoid race conditions.
 
         if existing_username:
-            raise HTTPException(status_code=409, detail="Username already exists.")
+            raise HTTPException(
+                status_code=409,
+                detail="Username already exists.",
+            )
+
         existing_user = self.user_repository.get_by_email(user.email)
+
         if existing_user:
-            raise HTTPException(status_code=409, detail="Email already registered.")
+            raise HTTPException(
+                status_code=409,
+                detail="Email already registered.",
+            )
 
         password_hash = hash_password(user.password)
 
@@ -94,7 +103,33 @@ class AuthService:
             "updated_at": datetime.now(UTC),
         }
 
-        self.user_repository.create(user_document)
+        try:
+            created_user = self.user_repository.create(user_document)
+        except DuplicateKeyError:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username or email already exists."
+            )
+
+        verification_token = secrets.token_urlsafe(32)
+
+        token_hash = self._hash_token(verification_token)
+
+        verification_document = EmailVerificationDocument(
+            user_id=str(created_user.inserted_id),
+            token=token_hash,
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC)
+            + timedelta(minutes=settings.email_verification_token_expire_minutes),
+            used=False,
+        )
+
+        self.email_verification_repository.save_verification_token(
+            verification_document
+        )
+
+        # Temporary until Notification Service is implemented.
+        print(f"Verification Token: {verification_token}")
 
         return {
             "message": "User registered successfully.",
@@ -442,7 +477,7 @@ class AuthService:
     #       ▼
     # Return Success
     def reset_password(self, request: ResetPasswordRequest):
-        token_hash = hashlib.sha256(request.token.encode()).hexdigest()
+        token_hash = self._hash_token(request.token)
 
         reset_token = self.password_reset_repository.consume_token(token_hash)
 
@@ -492,7 +527,7 @@ class AuthService:
     # Return Success
 
     def verify_email(self, request: VerifyEmailRequest):
-        token_hash = hashlib.sha256(request.token.encode()).hexdigest()
+        token_hash = self._hash_token(request.token)
         verification_token = self.email_verification_repository.consume_token(
             token_hash
         )
@@ -564,7 +599,7 @@ class AuthService:
         verification_token = secrets.token_urlsafe(32)
 
         # Store only the SHA-256 hash.
-        token_hash = hashlib.sha256(verification_token.encode()).hexdigest()
+        token_hash = self._hash_token(verification_token)
 
         verification_document = EmailVerificationDocument(
             user_id=str(user["_id"]),

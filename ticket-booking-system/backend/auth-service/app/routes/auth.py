@@ -14,6 +14,10 @@ from app.models.token_model import (
 )
 from app.models.password_reset_model import ForgotPasswordRequest, ResetPasswordRequest
 from app.models.response_model import MessageResponse
+from app.models.email_verification_model import (
+    VerifyEmailRequest,
+    ResendVerificationRequest,
+)
 
 # Every endpoint automatically starts with /auth because of the prefix.
 # tags are used for grouping endpoints in the documentation. In this case, all endpoints will be grouped under "Authentication". Show it's look much cleaner
@@ -29,6 +33,13 @@ def register_user(
     user: UserRegister, auth_service: AuthService = Depends(get_auth_service)
 ):
     return auth_service.register_user(user)
+
+@router.post("/verify-email", response_model=MessageResponse)
+async def verify_email(
+    request: VerifyEmailRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    return auth_service.verify_email(request)
 
 
 # OAuth2PasswordRequestForm extracts the username and password
@@ -72,6 +83,15 @@ async def refresh_token(
 ):
     return auth_service.refresh_access_token(token_request)
 
+@router.post(
+    "/resend-verification",
+    response_model=MessageResponse,
+)
+async def resend_verification(
+    request: ResendVerificationRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    return auth_service.resend_verification(request)
 
 @router.post("/logout", response_model=MessageResponse)
 async def logout_user(
@@ -108,6 +128,6 @@ async def reset_password(
 
 @router.get("/admin")
 async def admin_dashboard(
-    current_user: TokenPayload = Depends(require_roles("USER")),
+    current_user: TokenPayload = Depends(require_roles("ADMIN")),
 ):
     return {"message": "Welcome Admin", "user": current_user.email}

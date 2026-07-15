@@ -26,6 +26,8 @@ from starlette.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.database.redis import RedisDB
 from app.utils.config import settings
+import hashlib
+from app.utils.logger import logger
 
 # The parameter request contain evrything about the HTTP request like request.url, request.method, request.clien.host, request.headers we will use request.client.host
 # call_next() This is the next middleware or endpoint.
@@ -109,24 +111,42 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         client_ip = request.client.host
 
+        request_id = getattr(
+            request.state,
+            "request_id",
+            "unknown",
+        )
+
+        client_ip_hash = hashlib.sha256(client_ip.encode()).hexdigest()[:12]
+
         redis_key = f"rate_limit:{request.method}:{request.url.path}:{client_ip}"
 
-        try: 
+        try:
             request_count = redis_client.eval(
                 RATE_LIMIT_SCRIPT,
                 1,
                 redis_key,
                 settings.rate_limit_window_seconds,
             )
-        except Exception as error: 
-            print(f"Rate Limiter Redis error: {error}")
+        except Exception :
+            logger.exception(
+                "Rate limiter Redis failure request_id=%s path=%s",
+                request_id,
+                request.url.path,
+            )
             return await call_next(request)
 
         if request_count > limit:
             ttl = redis_client.ttl(redis_key)
+            logger.warning(
+                "Rate limit exceeded request_id=%s client_ip_hash=%s path=%s",
+                request_id,
+                client_ip_hash,
+                request.url.path,
+            )
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={"detail": "To many requests. Please try login again."},
+                content={"detail": "Too many requests. Please try login again."},
                 headers={"Retry-After": str(ttl)},
             )
 

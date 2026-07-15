@@ -38,7 +38,7 @@ class UserRepository:
         return self.users.find_one({"email": email})
 
     def create(self, user_document: dict):
-        self.users.insert_one(user_document)
+        return self.users.insert_one(user_document)
 
     def get_by_id(self, user_id: str):
         return self.users.find_one({"_id": ObjectId(user_id)})
@@ -47,4 +47,15 @@ class UserRepository:
         return self.users.update_one(
             {"_id": ObjectId(user_id)},
             {"$set": {"password_hash": password_hash, "updated_at": datetime.now(UTC)}},
+        )
+
+    def update_email_verified(self, user_id: str):
+        return self.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {
+                "$set": {
+                    "email_verified": True,
+                    "updated_at": datetime.now(UTC),
+                }
+            },
         )
