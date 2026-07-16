@@ -9,7 +9,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from app.models.token_model import (
     RefreshTokenRequest,
-    AccessTokenResponse,
     LogoutRequest,
 )
 from app.models.password_reset_model import ForgotPasswordRequest, ResetPasswordRequest

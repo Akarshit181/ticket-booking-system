@@ -15,7 +15,6 @@ from app.services.jwt_service import (
 )
 from app.models.token_model import (
     RefreshTokenRequest,
-    AccessTokenResponse,
     RefreshTokenDocument,
     TokenResponse,
     LogoutRequest,

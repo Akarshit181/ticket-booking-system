@@ -10,6 +10,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.exceptions.handlers import global_exception_handler
 from app.middleware.request_id import RequestIDMiddleware
 from contextlib import asynccontextmanager
+from app.utils.config import settings
 
 
 @asynccontextmanager
@@ -45,7 +46,8 @@ app.add_exception_handler(
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # allow_origins=["*"],
+    allow_origins=[settings.cors_allowed_origins],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
