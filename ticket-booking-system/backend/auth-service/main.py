@@ -1,7 +1,6 @@
 # Imports the main application Class
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes.login import router as login_router
 from app.database.mongodb import MongoDB
 from app.database.redis import RedisDB
 from app.routes.health import router as health_router
@@ -47,7 +46,7 @@ app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     # allow_origins=["*"],
-    allow_origins=[settings.cors_allowed_origins],
+    allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
