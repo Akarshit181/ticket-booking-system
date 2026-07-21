@@ -27,8 +27,8 @@ from datetime import datetime, UTC
 
 
 class UserRepository:
-    def __init__(self):
-        self.db = MongoDB.get_db()
+    def __init__(self, db=None):
+        self.db = db if db is not None else MongoDB.get_db()
         self.users = self.db[settings.collection_users]
 
     def get_by_username(self, username: str):

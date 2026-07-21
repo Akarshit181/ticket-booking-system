@@ -100,6 +100,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
 
+        if settings.testing:
+            return await call_next(request)
+
         route_key = (request.method, request.url.path)
 
         limit = RATE_LIMITED_ROUTES.get(route_key)
@@ -128,7 +131,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 redis_key,
                 settings.rate_limit_window_seconds,
             )
-        except Exception :
+        except Exception:
             logger.exception(
                 "Rate limiter Redis failure request_id=%s path=%s",
                 request_id,

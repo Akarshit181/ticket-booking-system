@@ -6,9 +6,9 @@ from datetime import datetime, UTC
 
 class RefreshTokenRepository:
 
-    def __init__(self):
-        db = MongoDB.get_db()
-        self.collection = db[settings.collection_refresh_tokens]
+    def __init__(self, db=None):
+        self.db = db if db is not None else MongoDB.get_db()
+        self.collection = self.db[settings.collection_refresh_tokens]
 
     def save_refresh_token(self, refresh_token: RefreshTokenDocument):
         # MongoDB cannot insert a Pydantic model directly,

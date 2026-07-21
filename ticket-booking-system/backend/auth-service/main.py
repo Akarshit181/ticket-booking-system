@@ -46,14 +46,12 @@ app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     # allow_origins=["*"],
-    allow_origins=settings.cors_allowed_origins,
+    allow_origins=[settings.cors_allowed_origins],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 app.add_middleware(RequestIDMiddleware)
-
-
 
 
 # This tells take all endpoints insider health_router and register them.

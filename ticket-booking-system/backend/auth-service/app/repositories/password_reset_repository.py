@@ -6,9 +6,9 @@ from datetime import datetime, UTC
 
 class PasswordResetRepository:
 
-    def __intit__(self):
-        db = MongoDB.get_db()
-        self.collection = db[settings.collection_password_reset_tokens]
+    def __init__(self, db=None):
+        self.db = db if db is not None else MongoDB.get_db()
+        self.collection = self.db[settings.collection_password_reset_tokens]
 
     def save_reset_token(self, reset_token: PasswordResetDocument):
         document = reset_token.model_dump()

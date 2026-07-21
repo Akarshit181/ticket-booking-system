@@ -19,6 +19,7 @@ from app.models.token_model import (
     TokenPayload,
 )
 from pydantic import ValidationError
+import uuid
 
 with open(
     settings.jwt_private_key_path,
@@ -45,25 +46,25 @@ def create_access_token(data: dict):
     )
     # Now payload becomes sub, role, exp. The exp is a standard claim that indicates the expiration time of the token. It is used to determine if the token is still valid or has expired.
     payload.update({"exp": expire, "type": "access"})
-    return jwt.encode(
-        payload, PRIVATE_KEY, algorithm=settings.jwt_algorithm
-    )
+    return jwt.encode(payload, PRIVATE_KEY, algorithm=settings.jwt_algorithm)
 
 
 def create_refresh_token(data: dict):
     payload = data.copy()
     expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
-    payload.update({"exp": expire, "type": "refresh"})
-    return jwt.encode(
-        payload, PRIVATE_KEY, algorithm=settings.jwt_algorithm
+    payload.update(
+        {
+            "exp": expire,
+            "type": "refresh",
+            "jti": str(uuid.uuid4()),  ## Makes every refresh token unique
+        }
     )
+    return jwt.encode(payload, PRIVATE_KEY, algorithm=settings.jwt_algorithm)
 
 
 def decode_token(token: str):
     try:
-        payload = jwt.decode(
-            token, PUBLIC_KEY, algorithms=[settings.jwt_algorithm]
-        )
+        payload = jwt.decode(token, PUBLIC_KEY, algorithms=[settings.jwt_algorithm])
 
         return payload
     except JWTError:
@@ -99,9 +100,6 @@ def verify_token(token: str, token_type: str = "access"):
     return token_payload
 
 
-
-
-
 # create_access_token()
 #         ↓
 # PRIVATE_KEY
@@ -121,6 +119,3 @@ def verify_token(token: str, token_type: str = "access"):
 # PUBLIC_KEY
 #         ↓
 # VERIFY JWT
-
-
-

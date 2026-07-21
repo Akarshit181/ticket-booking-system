@@ -5,14 +5,12 @@ from app.utils.config import settings
 from starlette import status
 from app.utils.logger import logger
 
-
-from app.services.password_service import hash_password, verify_password
-from app.repositories.user_repository import UserRepository
-from app.services.jwt_service import (
-    create_access_token,
-    create_refresh_token,
-    verify_token,
+from app.services import (
+    jwt_service,
+    password_service,
 )
+from app.repositories.user_repository import UserRepository
+
 from app.models.token_model import (
     RefreshTokenRequest,
     RefreshTokenDocument,
@@ -39,28 +37,35 @@ from app.models.email_verification_model import (
 from app.repositories.email_verification_repository import EmailVerificationRepository
 from app.services.login_attempt_service import LoginAttemptService
 from pymongo.errors import DuplicateKeyError
+from app.clients.notification_client import NotificationClient
 
 
 class AuthService:
 
     def __init__(
         self,
+        user_repository: UserRepository,
         refresh_token_repository: RefreshTokenRepository,
         password_reset_repository: PasswordResetRepository,
         email_verification_repository: EmailVerificationRepository,
         login_attempt_service: LoginAttemptService,
+        notification_client: NotificationClient,
     ):
-        self.user_repository = UserRepository()
-
+        self.user_repository = user_repository
         self.refresh_token_repository = refresh_token_repository
         self.password_reset_repository = password_reset_repository
         self.email_verification_repository = email_verification_repository
         self.login_attempt_service = login_attempt_service
+        self.notification_client = notification_client
+
+    @staticmethod
+    def _utc_now() -> datetime:
+        return datetime.now(UTC)
 
     def _hash_token(self, token: str) -> str:
         return hashlib.sha256(token.encode()).hexdigest()
 
-    def register_user(self, user: UserRegister):
+    def register_user(self, user: UserRegister) -> dict:
 
         existing_username = self.user_repository.get_by_username(user.username)
 
@@ -77,7 +82,7 @@ class AuthService:
 
         if existing_username:
             raise HTTPException(
-                status_code=409,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Username already exists.",
             )
 
@@ -85,12 +90,12 @@ class AuthService:
 
         if existing_user:
             raise HTTPException(
-                status_code=409,
-                detail="Email already registered.",
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already exists.",
             )
 
-        password_hash = hash_password(user.password)
-
+        password_hash = password_service.hash_password(user.password)
+        now = self._utc_now()
         user_document = {
             "username": user.username,
             "email": user.email,
@@ -98,8 +103,8 @@ class AuthService:
             "password_hash": password_hash,
             "is_active": True,
             "role": "USER",
-            "created_at": datetime.now(UTC),
-            "updated_at": datetime.now(UTC),
+            "created_at": now,
+            "updated_at": now,
         }
 
         try:
@@ -107,24 +112,34 @@ class AuthService:
         except DuplicateKeyError:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Username or email already exists."
+                detail="Username or email already exists.",
             )
 
-        verification_token = secrets.token_urlsafe(32)
+        verification_token = secrets.token_urlsafe(settings.token_bytes)
 
         token_hash = self._hash_token(verification_token)
-
+        now = self._utc_now()
         verification_document = EmailVerificationDocument(
             user_id=str(created_user.inserted_id),
             token=token_hash,
-            created_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC)
+            created_at=now,
+            expires_at=now
             + timedelta(minutes=settings.email_verification_token_expire_minutes),
             used=False,
         )
 
         self.email_verification_repository.save_verification_token(
             verification_document
+        )
+
+        verification_link = (
+            f"{settings.frontend_url}/verify-email" f"?token={verification_token}"
+        )
+
+        self.notification_client.send_verification_email(
+            recipient=user.email,
+            name=user.username,
+            verification_link=verification_link,
         )
 
         # Temporary until Notification Service is implemented.
@@ -134,7 +149,7 @@ class AuthService:
             "message": "User registered successfully.",
         }
 
-    def login_user(self, user: UserLogin):
+    def login_user(self, user: UserLogin) -> dict:
         identifier = user.email
         identifier_log_hash = hashlib.sha256(identifier.lower().encode()).hexdigest()[
             :12
@@ -152,13 +167,21 @@ class AuthService:
 
         if not existing_user:
             self.login_attempt_service.record_failed_attempt(identifier)
-            raise HTTPException(status_code=401, detail="Invalid email or password.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password.",
+            )
 
-        password_valid = verify_password(user.password, existing_user["password_hash"])
+        password_valid = password_service.verify_password(
+            user.password, existing_user["password_hash"]
+        )
 
         if not password_valid:
             self.login_attempt_service.record_failed_attempt(identifier)
-            raise HTTPException(status_code=401, detail="Invalid email or password.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password.",
+            )
 
         if not existing_user.get("is_active", True):
             raise HTTPException(
@@ -180,15 +203,14 @@ class AuthService:
             "role": existing_user["role"],
         }
 
-        access_token = create_access_token(payload)
-        refresh_token = create_refresh_token(payload)
-
+        access_token = jwt_service.create_access_token(payload)
+        refresh_token = jwt_service.create_refresh_token(payload)
+        now = self._utc_now()
         refresh_token_document = RefreshTokenDocument(
             user_id=str(existing_user["_id"]),
             token=self._hash_token(refresh_token),
-            created_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC)
-            + timedelta(days=settings.jwt_refresh_token_expire_days),
+            created_at=now,
+            expires_at=now + timedelta(days=settings.jwt_refresh_token_expire_days),
             is_revoked=False,
         )
 
@@ -201,28 +223,28 @@ class AuthService:
         }
 
     # This _ means internal helper for this class (Private only availabe for this class only).
-    def _save_refresh_token(self, user_id: str, refresh_token: str):
+    def _save_refresh_token(self, user_id: str, refresh_token: str) -> None:
 
+        now = self._utc_now()
         refresh_token_document = RefreshTokenDocument(
             user_id=user_id,
             token=self._hash_token(refresh_token),
-            created_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC)
-            + timedelta(days=settings.jwt_refresh_token_expire_days),
+            created_at=now,
+            expires_at=now + timedelta(days=settings.jwt_refresh_token_expire_days),
             is_revoked=False,
         )
 
         self.refresh_token_repository.save_refresh_token(refresh_token_document)
 
     def refresh_access_token(self, token_request: RefreshTokenRequest):
-        token_payload = verify_token(
+        token_payload = jwt_service.verify_token(
             token_request.refresh_token,
             token_type="refresh",
         )
 
         if token_payload is None:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired refresh token.",
             )
 
@@ -233,7 +255,7 @@ class AuthService:
 
         if existing_refresh_token is None:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired refresh token.",
             )
 
@@ -283,8 +305,8 @@ class AuthService:
             "role": user["role"],
         }
 
-        access_token = create_access_token(payload)
-        new_refresh_token = create_refresh_token(payload)
+        access_token = jwt_service.create_access_token(payload)
+        new_refresh_token = jwt_service.create_refresh_token(payload)
 
         new_refresh_token_hash = self._hash_token(new_refresh_token)
 
@@ -331,11 +353,14 @@ class AuthService:
     #    │
     #    ▼
     # Return Success
-    def logout(self, logout_request: LogoutRequest):
-        token_payload = verify_token(logout_request.refresh_token, token_type="refresh")
+    def logout(self, logout_request: LogoutRequest) -> dict:
+        token_payload = jwt_service.verify_token(
+            logout_request.refresh_token, token_type="refresh"
+        )
         if token_payload is None:
             raise HTTPException(
-                status_code=401, detail="Invalid or expired refresh token."
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token.",
             )
         refresh_token_hash = self._hash_token(logout_request.refresh_token)
         existing_refresh_token = self.refresh_token_repository.find_by_token(
@@ -375,22 +400,31 @@ class AuthService:
 
     def change_password(
         self, current_user: TokenPayload, request: ChangePasswordRequest
-    ):
+    ) -> dict:
         user = self.user_repository.get_by_id(current_user.sub)
 
         if not user:
-            raise HTTPException(status_code=404, detail="User not found.")
-
-        if not verify_password(request.old_password, user["password_hash"]):
-            raise HTTPException(status_code=400, detail="Old password is incorrect.")
-        # This compares against the stored hash, making it robust even if password handling changes in the future.
-        if verify_password(request.new_password, user["password_hash"]):
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+            )
+
+        if not password_service.verify_password(
+            request.old_password, user["password_hash"]
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Old password is incorrect.",
+            )
+        # This compares against the stored hash, making it robust even if password handling changes in the future.
+        if password_service.verify_password(
+            request.new_password, user["password_hash"]
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="New password must be different from the old password.",
             )
 
-        new_password_hash = hash_password(request.new_password)
+        new_password_hash = password_service.hash_password(request.new_password)
 
         self.user_repository.update_password(current_user.sub, new_password_hash)
 
@@ -423,24 +457,34 @@ class AuthService:
     #  │
     #  ▼
     # Return Generic Message
-    def forgot_password(self, request: ForgotPasswordRequest):
+    def forgot_password(self, request: ForgotPasswordRequest) -> dict:
         user = self.user_repository.get_by_email(request.email)
         if not user:
             return MessageResponse(message="Reset link sent to your registered email.")
 
         self.password_reset_repository.revoke_all_by_user_id(str(user["_id"]))
-        reset_token = secrets.token_urlsafe(32)
+        reset_token = secrets.token_urlsafe(settings.token_bytes)
+
         token_hash = self._hash_token(reset_token)
+        now = self._utc_now()
         reset_document = PasswordResetDocument(
             user_id=str(user["_id"]),
             token=token_hash,
-            created_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC)
+            created_at=now,
+            expires_at=now
             + timedelta(minutes=settings.password_reset_token_expire_minutes),
             used=False,
         )
 
         self.password_reset_repository.save_reset_token(reset_document)
+
+        reset_link = f"{settings.frontend_url}/reset-password" f"?token={reset_token}"
+
+        self.notification_client.send_password_reset_email(
+            recipient=user["email"],
+            name=user["username"],
+            reset_link=reset_link,
+        )
 
         print(reset_token)
 
@@ -475,18 +519,18 @@ class AuthService:
     #       │
     #       ▼
     # Return Success
-    def reset_password(self, request: ResetPasswordRequest):
+    def reset_password(self, request: ResetPasswordRequest) -> dict:
         token_hash = self._hash_token(request.token)
 
         reset_token = self.password_reset_repository.consume_token(token_hash)
 
         if reset_token is None:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired reset token.",
             )
 
-        new_password_hash = hash_password(request.new_password)
+        new_password_hash = password_service.hash_password(request.new_password)
 
         self.user_repository.update_password(
             reset_token["user_id"],
@@ -525,7 +569,7 @@ class AuthService:
     #             ▼
     # Return Success
 
-    def verify_email(self, request: VerifyEmailRequest):
+    def verify_email(self, request: VerifyEmailRequest) -> dict:
         token_hash = self._hash_token(request.token)
         verification_token = self.email_verification_repository.consume_token(
             token_hash
@@ -533,7 +577,8 @@ class AuthService:
 
         if verification_token is None:
             raise HTTPException(
-                status_code=400, detail="Invalid or expired verification token."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired verification token.",
             )
 
         result = self.user_repository.update_email_verified(
@@ -541,7 +586,10 @@ class AuthService:
         )
 
         if result.modified_count == 0:
-            raise HTTPException(status_code=400, detail="Unable to verify email.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unable to verify email.",
+            )
 
         return MessageResponse(message="Email verified successfully.")
 
@@ -577,7 +625,7 @@ class AuthService:
     #                ▼
     #          Return Success
 
-    def resend_verification(self, request: ResendVerificationRequest):
+    def resend_verification(self, request: ResendVerificationRequest) -> dict:
 
         user = self.user_repository.get_by_email(request.email)
 
@@ -595,16 +643,16 @@ class AuthService:
         self.email_verification_repository.revoke_all_by_user_id(str(user["_id"]))
 
         # Generate a new verification token.
-        verification_token = secrets.token_urlsafe(32)
+        verification_token = secrets.token_urlsafe(settings.token_bytes)
 
         # Store only the SHA-256 hash.
         token_hash = self._hash_token(verification_token)
-
+        now = self._utc_now()
         verification_document = EmailVerificationDocument(
             user_id=str(user["_id"]),
             token=token_hash,
-            created_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC)
+            created_at=now,
+            expires_at=now
             + timedelta(minutes=settings.email_verification_token_expire_minutes),
             used=False,
         )
@@ -613,14 +661,15 @@ class AuthService:
             verification_document
         )
 
-        # TODO:
-        # notification_client.send_verification_email(
-        #     email=user["email"],
-        #     username=user["username"],
-        #     verification_token=verification_token,
-        # )
+        verification_link = (
+            f"{settings.frontend_url}/verify-email" f"?token={verification_token}"
+        )
 
-        # Temporary until Notification Service is implemented.
+        self.notification_client.send_verification_email(
+            recipient=user["email"],
+            name=user["username"],
+            verification_link=verification_link,
+        )
         print(f"Verification Token: {verification_token}")
 
         return MessageResponse(

@@ -7,14 +7,10 @@ module.exports = withModuleFederationPlugin({
   name: 'auth',
 
   exposes: {
-    './LoginComponent': './src/app/features/auth/login/login.ts',
+    './LoginComponent': './src/app/login/login.ts',
   },
 
   shared: {
-    ...shareAll({
-      singleton: true,
-      strictVersion: true,
-      requiredVersion: 'auto',
-    }),
+    ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
   },
 });

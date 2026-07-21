@@ -5,11 +5,9 @@ from app.utils.config import settings
 
 
 class EmailVerificationRepository:
-    def __init__(self):
-        db = MongoDB.get_db()
-        self.collection = db[
-            settings.collection_email_verification_tokens
-        ]
+    def __init__(self, db=None):
+        self.db = db if db is not None else MongoDB.get_db()
+        self.collection = self.db[settings.collection_email_verification_tokens]
 
     def save_verification_token(
         self,
@@ -33,13 +31,7 @@ class EmailVerificationRepository:
         )
 
     def delete_expired(self):
-        return self.collection.delete_many(
-            {
-                "expires_at": {
-                    "$lt": datetime.now(UTC)
-                }
-            }
-        )
+        return self.collection.delete_many({"expires_at": {"$lt": datetime.now(UTC)}})
 
     def revoke_all_by_user_id(self, user_id: str):
         return self.collection.update_many(
@@ -60,9 +52,7 @@ class EmailVerificationRepository:
             {
                 "token": token_hash,
                 "used": False,
-                "expires_at": {
-                    "$gt": datetime.now(UTC)
-                },
+                "expires_at": {"$gt": datetime.now(UTC)},
             },
             {
                 "$set": {

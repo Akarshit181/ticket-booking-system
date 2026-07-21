@@ -16,6 +16,9 @@ load_dotenv()
 
 
 class Settings:
+
+    testing: bool = os.getenv("TESTING", "false").lower() == "true"
+
     app_name = os.getenv("APP_NAME", "Auth_Service")
 
     mongo_uri = os.getenv("MONGO_URI")
@@ -74,11 +77,23 @@ class Settings:
 
     login_attempt_window_seconds = int(os.getenv("LOGIN_ATTEMPT_WINDOW_SECONDS", 300))
 
+    token_bytes = int(os.getenv("TOKEN_BYTES", 32))
+
     cors_allowed_origins = [
         origin.strip()
         for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
         if origin.strip()
     ]
+
+    notification_service_url: str = os.getenv(
+        "NOTIFICATION_SERVICE_URL",
+        "http://localhost:8001",
+    )
+
+    frontend_url: str = os.getenv(
+        "FRONTEND_URL",
+        "http://localhost:3000",
+    )
 
     def validate(self):
         required_settings = {
@@ -98,9 +113,7 @@ class Settings:
         }
 
         missing_settings = [
-            name
-            for name, value in required_settings.items()
-            if not value
+            name for name, value in required_settings.items() if not value
         ]
 
         if missing_settings:
