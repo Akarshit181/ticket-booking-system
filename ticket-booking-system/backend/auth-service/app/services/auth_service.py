@@ -141,15 +141,22 @@ class AuthService:
             name=user.username,
             verification_link=verification_link,
         )
-
+        logger.info(
+            "User registered successfully. user_id=%s",
+            created_user.inserted_id,
+        )
         # Temporary until Notification Service is implemented.
-        print(f"Verification Token: {verification_token}")
+        # print(f"Verification Token: {verification_token}")
 
         return {
             "message": "User registered successfully.",
         }
 
-    def login_user(self, user: UserLogin) -> dict:
+    def login_user(
+        self,
+        user: UserLogin,
+        client_ip: str | None = None,
+    ) -> dict:
         identifier = user.email
         identifier_log_hash = hashlib.sha256(identifier.lower().encode()).hexdigest()[
             :12
@@ -216,10 +223,16 @@ class AuthService:
 
         self.refresh_token_repository.save_refresh_token(refresh_token_document)
 
+        logger.info(
+            "User logged in successfully. user_id=%s ip=%s",
+            existing_user["_id"],
+            client_ip,
+        )
+
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "token_type": "Bearer",
+            "token_type": "bearer",
         }
 
     # This _ means internal helper for this class (Private only availabe for this class only).
@@ -264,6 +277,10 @@ class AuthService:
             revocation_reason = existing_refresh_token.get("revocation_reason")
 
             if revocation_reason == "rotation":
+                logger.warning(
+                    "Refresh token replay detected. Revoking all sessions for user_id=%s",
+                    existing_refresh_token["user_id"],
+                )
                 self.refresh_token_repository.revoke_all_by_user_id(
                     existing_refresh_token["user_id"]
                 )
@@ -353,7 +370,11 @@ class AuthService:
     #    │
     #    ▼
     # Return Success
-    def logout(self, logout_request: LogoutRequest) -> dict:
+    def logout(
+        self,
+        logout_request: LogoutRequest,
+        client_ip: str | None = None,
+    ) -> dict:
         token_payload = jwt_service.verify_token(
             logout_request.refresh_token, token_type="refresh"
         )
@@ -369,6 +390,12 @@ class AuthService:
 
         if existing_refresh_token:
             self.refresh_token_repository.revoke_for_logout(refresh_token_hash)
+
+            logger.info(
+                "User logged out successfully. user_id=%s ip=%s",
+                token_payload.sub,
+                client_ip,
+            )
 
         return {"message": "Logged out successfully."}
 
@@ -430,6 +457,11 @@ class AuthService:
 
         self.refresh_token_repository.delete_all_by_user_id(current_user.sub)
 
+        logger.info(
+            "Password changed successfully. user_id=%s",
+            current_user.sub,
+        )
+
         return MessageResponse(
             message="Password changed successfully. Please login again."
         )
@@ -486,7 +518,12 @@ class AuthService:
             reset_link=reset_link,
         )
 
-        print(reset_token)
+        logger.info(
+            "Password reset email sent. user_id=%s",
+            user["_id"],
+        )
+
+        # print(reset_token)
 
         #         notification_client.send_password_reset(
         #     ...
@@ -538,7 +575,10 @@ class AuthService:
         )
 
         self.refresh_token_repository.delete_all_by_user_id(reset_token["user_id"])
-
+        logger.info(
+            "Password reset successfully. user_id=%s",
+            reset_token["user_id"],
+        )
         return MessageResponse(
             message="Password reset successfully. Please login again."
         )
@@ -590,6 +630,11 @@ class AuthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Unable to verify email.",
             )
+
+        logger.info(
+            "Email verified successfully. user_id=%s",
+            verification_token["user_id"],
+        )
 
         return MessageResponse(message="Email verified successfully.")
 
@@ -670,7 +715,11 @@ class AuthService:
             name=user["username"],
             verification_link=verification_link,
         )
-        print(f"Verification Token: {verification_token}")
+        logger.info(
+            "Verification email resent. user_id=%s",
+            user["_id"],
+        )
+        # print(f"Verification Token: {verification_token}")
 
         return MessageResponse(
             message="If an account with that email exists, a verification email has been sent."

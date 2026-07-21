@@ -20,3 +20,8 @@
 2026-07-20 00:10:29,501 | WARNING | auth-service | Rate limit exceeded request_id=5ae726fa-e5bc-4415-816f-4abdad979607 client_ip_hash=846488f1dc5c path=/auth/register
 2026-07-20 00:10:29,517 | WARNING | auth-service | Rate limit exceeded request_id=01341de7-be72-4dbc-88a7-df6a0ccdae49 client_ip_hash=846488f1dc5c path=/auth/register
 2026-07-20 00:10:29,534 | WARNING | auth-service | Rate limit exceeded request_id=dd163df2-89a2-4849-9379-6b0dc12a19b6 client_ip_hash=846488f1dc5c path=/auth/register
+2026-07-21 11:41:33,510 | WARNING | auth-service | Rate limit exceeded request_id=50dff3e8-e783-46b0-b6ed-9356d1f9f357 client_ip_hash=12ca17b49af2 path=/auth/login
+2026-07-21 11:41:33,513 | WARNING | auth-service | Rate limit exceeded request_id=1dcd6df7-23a1-498d-846e-8077bff0c71e client_ip_hash=12ca17b49af2 path=/auth/login
+2026-07-21 11:41:33,670 | WARNING | auth-service | Rate limit exceeded request_id=0186fc98-715b-4382-89b8-91650be0b3e6 client_ip_hash=12ca17b49af2 path=/auth/login
+2026-07-21 11:41:33,861 | WARNING | auth-service | Rate limit exceeded request_id=e2094287-c1a1-4f26-a5e5-b7f6b6e3f92c client_ip_hash=12ca17b49af2 path=/auth/login
+2026-07-21 11:41:58,806 | WARNING | auth-service | Rate limit exceeded request_id=1a7a92e8-f959-4f59-9ed1-776540410ef8 client_ip_hash=12ca17b49af2 path=/auth/login

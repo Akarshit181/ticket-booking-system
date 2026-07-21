@@ -6,17 +6,17 @@ from app.repositories.email_verification_repository import (
 )
 
 
-def get_user_repository():
+def get_user_repository() -> UserRepository:
     return UserRepository()
 
 
-def get_refresh_token_repository():
+def get_refresh_token_repository() -> RefreshTokenRepository:
     return RefreshTokenRepository()
 
 
-def get_password_reset_repository():
+def get_password_reset_repository() -> PasswordResetRepository:
     return PasswordResetRepository()
 
 
-def get_email_verification_repository():
+def get_email_verification_repository() -> EmailVerificationRepository:
     return EmailVerificationRepository()

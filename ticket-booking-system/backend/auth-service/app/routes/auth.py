@@ -1,10 +1,10 @@
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, status, Depends, HTTPException, Request
 from app.dependencies.auth import get_auth_service
 from app.dependencies.rbac import require_roles
 from app.services.auth_service import AuthService
 from app.models.user_model import UserRegister, UserLogin, ChangePasswordRequest
 from app.dependencies.security import get_current_user
-from app.models.token_model import TokenPayload
+from app.models.token_model import TokenPayload, TokenResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from app.models.token_model import (
@@ -17,6 +17,7 @@ from app.models.email_verification_model import (
     VerifyEmailRequest,
     ResendVerificationRequest,
 )
+from app.utils.request import get_client_ip
 
 # Every endpoint automatically starts with /auth because of the prefix.
 # tags are used for grouping endpoints in the documentation. In this case, all endpoints will be grouped under "Authentication". Show it's look much cleaner
@@ -27,11 +28,16 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # status_code=status.HTTP_201_CREATED , more readable ide autocomplete and return 201 Created
 # AuthService → the type of the object you receive (Type Annotation).
 # get_auth_service → a function that creates and returns that object.
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
+    response_model=MessageResponse,
+)
 def register_user(
     user: UserRegister, auth_service: AuthService = Depends(get_auth_service)
 ):
     return auth_service.register_user(user)
+
 
 @router.post("/verify-email", response_model=MessageResponse)
 async def verify_email(
@@ -50,13 +56,18 @@ async def verify_email(
 # of FastAPI and OAuth2.
 # Pass the UserLogin model to the service layer.
 # The service should only contain business logic and should
-# not know how the HTTP request was received.
-@router.post("/login")
+# not know how the HTTP request was received.\
+
+
+@router.post("/login", response_model=TokenResponse)
 async def login_user(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_service: AuthService = Depends(get_auth_service),
 ):
     try:
+
+        client_ip = get_client_ip(request)
         user = UserLogin(
             email=form_data.username,
             password=form_data.password,
@@ -67,7 +78,10 @@ async def login_user(
             detail="Invalid email or password.",
         )
 
-    return auth_service.login_user(user)
+    return auth_service.login_user(
+        user,
+        client_ip=client_ip,
+    )
 
 
 @router.get("/me")
@@ -75,12 +89,16 @@ async def get_me(current_user: TokenPayload = Depends(get_current_user)):
     return current_user
 
 
-@router.post("/refresh")
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+)
 async def refresh_token(
     token_request: RefreshTokenRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
     return auth_service.refresh_access_token(token_request)
+
 
 @router.post(
     "/resend-verification",
@@ -92,11 +110,15 @@ async def resend_verification(
 ):
     return auth_service.resend_verification(request)
 
+
 @router.post("/logout", response_model=MessageResponse)
 async def logout_user(
-    logout_request: LogoutRequest, auth_service: AuthService = Depends(get_auth_service)
+    request: Request,
+    logout_request: LogoutRequest,
+    auth_service: AuthService = Depends(get_auth_service),
 ):
-    return auth_service.logout(logout_request)
+    client_ip = get_client_ip(request)
+    return auth_service.logout(logout_request, client_ip=client_ip)
 
 
 # Why do we inject:

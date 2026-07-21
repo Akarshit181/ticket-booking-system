@@ -23,7 +23,7 @@ from app.clients.notification_client import NotificationClient
 from app.dependencies.provider import get_notification_client
 
 
-def get_login_attempt_service():
+def get_login_attempt_service() -> LoginAttemptService:
     return LoginAttemptService()
 
 
@@ -40,7 +40,7 @@ def get_auth_service(
     ),
     login_attempt_service: LoginAttemptService = Depends(get_login_attempt_service),
     notification_client: NotificationClient = Depends(get_notification_client),
-):
+) -> AuthService:
     return AuthService(
         user_repository=user_repository,
         refresh_token_repository=refresh_token_repository,

@@ -24,12 +24,6 @@ class EmailVerificationRepository:
             }
         )
 
-    def mark_as_used(self, token_hash: str):
-        return self.collection.update_one(
-            {"token": token_hash},
-            {"$set": {"used": True}},
-        )
-
     def delete_expired(self):
         return self.collection.delete_many({"expires_at": {"$lt": datetime.now(UTC)}})
 

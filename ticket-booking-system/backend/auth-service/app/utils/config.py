@@ -79,6 +79,8 @@ class Settings:
 
     token_bytes = int(os.getenv("TOKEN_BYTES", 32))
 
+    notification_timeout = int(os.getenv("NOTIFICATION_TIMEOUT", 32))
+
     cors_allowed_origins = [
         origin.strip()
         for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
@@ -94,6 +96,8 @@ class Settings:
         "FRONTEND_URL",
         "http://localhost:3000",
     )
+
+    debug: bool = False
 
     def validate(self):
         required_settings = {

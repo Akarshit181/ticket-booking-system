@@ -1,4 +1,3 @@
-
 from app.clients.notification_client import NotificationClient
 
 

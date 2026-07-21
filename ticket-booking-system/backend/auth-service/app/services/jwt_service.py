@@ -14,12 +14,13 @@
 # When user send any data it again creates the signature using the same Header, Payload, and Secret Key. If the signature matches the one in the JWT, it means the data has not been tampered with.
 from datetime import datetime, timedelta, UTC
 from jose import jwt, JWTError
+from typing import Mapping, Any
 from app.utils.config import settings
 from app.models.token_model import (
     TokenPayload,
 )
 from pydantic import ValidationError
-import uuid
+from uuid import uuid4
 
 with open(
     settings.jwt_private_key_path,
@@ -37,9 +38,9 @@ with open(
     PUBLIC_KEY = public_key_file.read()
 
 
-def create_access_token(data: dict):
+def create_access_token(data: Mapping[str, object]) -> str:
     # we don't want to modify the original data dictionary show we work on a copy of it. This is important because dictionaries are mutable in Python, and modifying the original dictionary could lead to unexpected behavior elsewhere in the code.
-    payload = data.copy()
+    payload = dict(data)
     # Adding Expiration
     expire = datetime.now(UTC) + timedelta(
         minutes=settings.jwt_access_token_expire_minutes
@@ -49,20 +50,20 @@ def create_access_token(data: dict):
     return jwt.encode(payload, PRIVATE_KEY, algorithm=settings.jwt_algorithm)
 
 
-def create_refresh_token(data: dict):
-    payload = data.copy()
+def create_refresh_token(data: Mapping[str, object]) -> str:
+    payload = dict(data)
     expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
     payload.update(
         {
             "exp": expire,
             "type": "refresh",
-            "jti": str(uuid.uuid4()),  ## Makes every refresh token unique
+            "jti": str(uuid4()),  ## Makes every refresh token unique
         }
     )
     return jwt.encode(payload, PRIVATE_KEY, algorithm=settings.jwt_algorithm)
 
 
-def decode_token(token: str):
+def decode_token(token: str) -> dict[str, Any] | None:
     try:
         payload = jwt.decode(token, PUBLIC_KEY, algorithms=[settings.jwt_algorithm])
 
@@ -71,7 +72,7 @@ def decode_token(token: str):
         return None
 
 
-def verify_token(token: str, token_type: str = "access"):
+def verify_token(token: str, token_type: str = "access") -> TokenPayload | None:
     payload = decode_token(token)
     if payload is None:
         return None

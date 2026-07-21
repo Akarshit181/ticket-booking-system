@@ -27,22 +27,19 @@ class NotificationClient:
         try:
             url = f"{self.base_url}/notifications/email"
 
-            print("URL:", url)
-            print("Payload:", payload)
+            # print("URL:", url)
+            # print("Payload:", payload)
 
             response = httpx.post(
                 url,
                 json=payload,
-                timeout=30,
+                timeout=settings.notification_timeout,
             )
 
-            print("Status:", response.status_code)
-            print("Response:", response.text)
+            # print("Status:", response.status_code)
+            # print("Response:", response.text)
 
             response.raise_for_status()
-
-        except Exception:
-            raise
 
         except httpx.HTTPError:
             logger.exception(
@@ -50,6 +47,11 @@ class NotificationClient:
                 recipient,
             )
             raise
+
+        logger.exception(
+            "Notification service request failed. recipient=%s",
+            recipient,
+        )
 
     def send_verification_email(
         self,

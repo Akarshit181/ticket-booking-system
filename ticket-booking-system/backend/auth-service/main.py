@@ -1,4 +1,5 @@
 # Imports the main application Class
+from app.utils.logger import logger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database.mongodb import MongoDB
@@ -13,15 +14,26 @@ from app.utils.config import settings
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    MongoDB.connect()
-    RedisDB.connect()
+async def lifespan(_: FastAPI):
+    try:
+        MongoDB.connect()
+        RedisDB.connect()
+    except Exception:
+        logger.exception("Application startup failed.")
+        raise
 
     try:
         yield
     finally:
-        RedisDB.close()
-        MongoDB.close()
+        try:
+            RedisDB.close()
+        except Exception:
+            logger.exception("Failed to close Redis.")
+
+        try:
+            MongoDB.close()
+        except Exception:
+            logger.exception("Failed to close MongoDB.")
 
 
 # Use my lifespan() function
@@ -31,7 +43,14 @@ async def lifespan(app: FastAPI):
 # Run application
 #         ↓
 # Run shutdown code
-app = FastAPI(title="Auth-Service", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="Auth-Service",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    openapi_url="/openapi.json" if settings.debug else None,
+)
 # Global exception handler
 app.add_exception_handler(
     Exception,

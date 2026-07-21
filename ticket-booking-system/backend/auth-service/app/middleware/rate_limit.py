@@ -28,6 +28,8 @@ from app.database.redis import RedisDB
 from app.utils.config import settings
 import hashlib
 from app.utils.logger import logger
+from app.utils.request import get_client_ip
+from starlette.responses import Response
 
 # The parameter request contain evrything about the HTTP request like request.url, request.method, request.clien.host, request.headers we will use request.client.host
 # call_next() This is the next middleware or endpoint.
@@ -98,7 +100,7 @@ return current
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
 
         if settings.testing:
             return await call_next(request)
@@ -112,7 +114,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         redis_client = RedisDB.get_client()
 
-        client_ip = request.client.host
+        client_ip = get_client_ip(request)
 
         request_id = getattr(
             request.state,
@@ -141,18 +143,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if request_count > limit:
             ttl = redis_client.ttl(redis_key)
+            retry_after = max(ttl, 0)
+
             logger.warning(
                 "Rate limit exceeded request_id=%s client_ip_hash=%s path=%s",
                 request_id,
                 client_ip_hash,
                 request.url.path,
             )
+
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={"detail": "Too many requests. Please try login again."},
-                headers={"Retry-After": str(ttl)},
+                content={"detail": "Too many requests. Please try again later."},
+                headers={
+                    "Retry-After": str(retry_after),
+                },
             )
 
-        response = await call_next(request)
-
-        return response
+        return await call_next(request)

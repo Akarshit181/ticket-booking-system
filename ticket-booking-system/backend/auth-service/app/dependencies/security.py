@@ -24,17 +24,18 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from app.services.jwt_service import verify_token
+from app.models.token_model import TokenPayload
 
-# It tells fastapi that every protected endpoint should expects an Authorization header like 
-# Authorization: Bearer eyJhbGc... fastapi extracts only this eyJhbGc... 
+# It tells fastapi that every protected endpoint should expects an Authorization header like
+# Authorization: Bearer eyJhbGc... fastapi extracts only this eyJhbGc...
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenPayload:
     token_payload = verify_token(token)
-    if token_payload is None: 
+    if token_payload is None:
         raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail = "Invalid or expired access token."
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token.",
         )
     return token_payload
