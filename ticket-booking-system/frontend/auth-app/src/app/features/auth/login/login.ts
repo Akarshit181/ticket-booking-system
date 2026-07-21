@@ -7,6 +7,7 @@ import { Token } from '../../../core/services/token';
 
 @Component({
   selector: 'app-login',
+  standalone: true,
   imports: [ReactiveFormsModule],
   templateUrl: './login.html',
   styleUrl: './login.css',
@@ -30,10 +31,14 @@ export class Login {
 
     this.auth.login(this.loginForm.getRawValue()).subscribe({
       next: (response) => {
+        console.log('Login successful:', response);
+
         this.token.setAccessToken(response.access_token);
         this.token.setRefreshToken(response.refresh_token);
 
-        this.router.navigate(['/']);
+        this.router.navigate(['/dashboard']).then((success) => {
+          console.log('Navigation success:', success);
+        });
       },
       error: (error) => {
         console.error('Login failed:', error);
