@@ -23,10 +23,8 @@ class NotificationClient:
             "template": template,
             "variables": variables,
         }
-
+        url = f"{self.base_url}/notifications/email"
         try:
-            url = f"{self.base_url}/notifications/email"
-
             # print("URL:", url)
             # print("Payload:", payload)
 
@@ -48,8 +46,8 @@ class NotificationClient:
             )
             raise
 
-        logger.exception(
-            "Notification service request failed. recipient=%s",
+        logger.info(
+            "Notification sent successfully. recipient=%s",
             recipient,
         )
 

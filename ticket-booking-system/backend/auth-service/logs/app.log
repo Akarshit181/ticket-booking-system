@@ -25,3 +25,6 @@
 2026-07-21 11:41:33,670 | WARNING | auth-service | Rate limit exceeded request_id=0186fc98-715b-4382-89b8-91650be0b3e6 client_ip_hash=12ca17b49af2 path=/auth/login
 2026-07-21 11:41:33,861 | WARNING | auth-service | Rate limit exceeded request_id=e2094287-c1a1-4f26-a5e5-b7f6b6e3f92c client_ip_hash=12ca17b49af2 path=/auth/login
 2026-07-21 11:41:58,806 | WARNING | auth-service | Rate limit exceeded request_id=1a7a92e8-f959-4f59-9ed1-776540410ef8 client_ip_hash=12ca17b49af2 path=/auth/login
+2026-07-22 14:50:30,557 | WARNING | auth-service | Rate limit exceeded request_id=10b696b4-0a40-42f9-976a-b5d651da868a client_ip_hash=12ca17b49af2 path=/auth/register
+2026-07-22 14:51:33,760 | INFO | auth-service | User registered successfully. user_id=6a608b9d3098b2c2784b6a76
+2026-07-22 15:21:05,498 | INFO | auth-service | User registered successfully. user_id=6a609289b1b4376b05676adc

@@ -97,7 +97,7 @@ class Settings:
         "http://localhost:3000",
     )
 
-    debug: bool = False
+    debug: bool = os.getenv("DEBUG", "false").lower() == "true"
 
     def validate(self):
         required_settings = {
