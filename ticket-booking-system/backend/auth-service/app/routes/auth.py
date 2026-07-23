@@ -21,7 +21,7 @@ from app.utils.request import get_client_ip
 
 # Every endpoint automatically starts with /auth because of the prefix.
 # tags are used for grouping endpoints in the documentation. In this case, all endpoints will be grouped under "Authentication". Show it's look much cleaner
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 
 # FastAPI sees -- Before calling register(), I need an AuthService with Dependency Injection the route knows how to create auth service and with Depends() the route doesn't know where auth_service comes from. It only knows i need one (This is called inversion of control).
