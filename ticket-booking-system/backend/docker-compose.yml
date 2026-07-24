@@ -6,9 +6,14 @@ services:
       dockerfile: Dockerfile
 
     container_name: api-gateway
-
+# To avoid local run, In that way external request is forced through the gateway
+  # expose:
+  #   - "8000"
     ports:
       - "8080:80"
+
+    volumes:
+      - ./api-gateway/logs:/var/log/nginx
 
     depends_on:
       - auth-service
